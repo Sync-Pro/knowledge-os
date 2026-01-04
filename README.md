@@ -619,7 +619,7 @@ Upload → Validation → Text Extraction → Chunking → Embedding → Storage
 1. **Clone and Setup**
    ```bash
    git clone <repository-url>
-   cd mycelium-knowledge-os
+   cd knowledge-os
    ./scripts/setup.sh
    ```
 
@@ -669,7 +669,7 @@ This is a complete, production-ready implementation:
 
 ## 📄 License
 
-This project is provided as architectural documentation. Implementation should follow appropriate licensing for chosen dependencies.
+MIT License.
 
 ### Development Workflow
 
