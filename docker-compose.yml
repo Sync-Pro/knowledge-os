@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: mycelium
+      POSTGRES_USER: mycelium_user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - mycelium-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - mycelium-network
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://mycelium_user:password@postgres:5432/mycelium
+      - REDIS_URL=redis://redis:6379
+      - DEBUG=true
+      - CORS_ORIGINS=["http://localhost:3000"]
+    volumes:
+      - ./backend:/app
+      - ./uploads:/app/uploads
+      - ./vector_stores:/app/vector_stores
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - mycelium-network
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - mycelium-network
+    command: npm run dev
+
+  # Optional: MinIO for file storage (development)
+  minio:
+    image: minio/minio:latest
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_data:/data
+    networks:
+      - mycelium-network
+    command: server /data --console-address ":9001"
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+
+networks:
+  mycelium-network:
+    driver: bridge
